@@ -27,8 +27,43 @@ AJS.prototype.compile = function compile(name,schema){
 
 	if('object' !== typeof schema) throw new TypeError('Schema must be object or array');
 
-	this_children=_compileSchema(schema,this);
+	this._children=_compileSchema(schema,this);
 
 	_iteratorSchema(this);
 	return this;
+}
+
+AJS.prototype.validate = function validate(obj,opts){
+	if(!this._schema) throw new TypeError('No schema assigned, please call .compile(schema)');
+	opts=opts||{};
+	return _validateObject(obj,opts,this);
+}
+
+function _compileSchema(schema,ctx){
+	var children ={};
+	var isArray = Array.isArray(schema);
+
+	schema = isArray?schema[0]:schema;
+	ctx[isArray?'_array':'_object'] = true;
+
+	if(schema instanceof AJS){
+		if(schema._name) ctx._name = schema._name;
+		if(schema._leaf) {
+			ctx._leaf = schema._leaf;
+			delete ctx._object;
+		}
+		return schema._children;
+	}
+
+	if(schema.type && !(schema.type instanceof AJS) && !schema.type.type){
+		ctx._leaf = true;
+		delete ctx._object;
+		return schema;
+	}
+
+	for(var key in schema){
+		children[key] = AJS(schema[key]);
+	}
+
+	return children;
 }
